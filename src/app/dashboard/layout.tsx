@@ -17,6 +17,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
             <NavLink href="/dashboard" exact>
               Forms
             </NavLink>
+            <NavLink href="/dashboard/integrations">Integrations</NavLink>
             <NavLink href="/dashboard/settings">Settings</NavLink>
             <NavLink href="/docs">API</NavLink>
           </nav>

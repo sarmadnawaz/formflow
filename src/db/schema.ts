@@ -6,6 +6,7 @@ const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull(
 export const workspaces = pgTable("workspaces", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
+  fastnRegisteredAt: timestamp("fastn_registered_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 

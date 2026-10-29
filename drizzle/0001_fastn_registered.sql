@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "fastn_registered_at" timestamp with time zone;
