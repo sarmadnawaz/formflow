@@ -17,6 +17,35 @@ export function serializeForm(form: Form) {
 }
 
 /**
+ * Standard contact keys worked out from the form's fields, so integrations can map
+ * "email", "firstname" and the like without knowing each customer's field ids.
+ */
+export function contactFrom(form: Form, answers: Record<string, unknown>) {
+  const value = (pred: (f: Form["fields"][number]) => boolean) => {
+    const f = form.fields.find((x) => pred(x) && answers[x.id] != null && answers[x.id] !== "");
+    return f ? String(answers[f.id]) : undefined;
+  };
+  const label = (re: RegExp) => (f: Form["fields"][number]) => re.test(f.label);
+  const email = value((f) => f.type === "email");
+  const phone = value((f) => f.type === "phone") ?? value(label(/phone|mobile/i));
+  const company = value(label(/company|organi[sz]ation|business/i));
+  const first = value(label(/^first\s*name/i));
+  const last = value(label(/^(last|sur)\s*name/i));
+  const full = value((f) => f.type === "short_text" && /name/i.test(f.label) && !/company|organi[sz]ation|first|last|sur/i.test(f.label));
+  const [splitFirst, ...rest] = (full ?? "").trim().split(/\s+/);
+  const out: Record<string, string> = {};
+  if (email) out.email = email;
+  const firstname = first ?? (full ? splitFirst : undefined);
+  const lastname = last ?? (full && rest.length ? rest.join(" ") : undefined);
+  if (firstname) out.firstname = firstname;
+  if (lastname) out.lastname = lastname;
+  if (full ?? (first || last)) out.name = full ?? [first, last].filter(Boolean).join(" ");
+  if (phone) out.phone = phone;
+  if (company) out.company = company;
+  return out;
+}
+
+/**
  * A response with answers keyed by field id, plus a flat, labelled list so that
  * consumers can map answers without looking up the form first.
  */
@@ -26,7 +55,9 @@ export function serializeResponse(response: FormResponse, form: Form) {
     form_id: response.formId,
     source: response.source,
     created_at: response.createdAt.toISOString(),
-    answers: response.answers,
+    // Field-id keys plus standard contact keys (email, firstname, lastname, name, phone, company).
+    answers: { ...contactFrom(form, response.answers), ...response.answers },
+    contact: contactFrom(form, response.answers),
     fields: form.fields.map((f) => ({ id: f.id, label: f.label, type: f.type, value: response.answers[f.id] ?? null })),
   };
 }

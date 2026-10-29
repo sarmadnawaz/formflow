@@ -15,6 +15,13 @@
       "when": 1793290167295,
       "tag": "0001_fastn_registered",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793293370593,
+      "tag": "0002_fastn_connection",
+      "breakpoints": true
     }
   ]
 }

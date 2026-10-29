@@ -1,6 +1,6 @@
 import { Card, PageHeader } from "@/components/ui";
 import { requireSession } from "@/lib/auth";
-import { embedToken, ensureCustomer, fastnConfigured, FastnError, iframeSrc } from "@/lib/fastn";
+import { embedToken, ensureCustomer, ensureProductConnection, fastnConfigured, FastnError, iframeSrc } from "@/lib/fastn";
 
 export const metadata = { title: "Integrations" };
 
@@ -14,6 +14,7 @@ export default async function IntegrationsPage() {
   } else {
     try {
       await ensureCustomer(workspace, user);
+      await ensureProductConnection(workspace, user);
       src = iframeSrc(await embedToken(workspace, user));
     } catch (e) {
       console.error("fastn embed failed", e instanceof FastnError ? { status: e.status, body: e.body } : e);

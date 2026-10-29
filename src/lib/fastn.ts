@@ -2,6 +2,7 @@ import "server-only";
 import { createHmac } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, workspaces, type User, type Workspace } from "@/db";
+import { createApiKey } from "./api";
 
 /**
  * Fastn embed: each Formflow workspace is one Fastn customer (orgId = workspace id).
@@ -47,6 +48,32 @@ export async function ensureCustomer(workspace: Workspace, user: User) {
   const alreadyThere = res.status === 409 || /already/i.test(body);
   if (!res.ok && !alreadyThere) throw new FastnError(`Registering the workspace with Fastn failed (HTTP ${res.status})`, res.status, body);
   await db.update(workspaces).set({ fastnRegisteredAt: new Date() }).where(eq(workspaces.id, workspace.id));
+}
+
+/**
+ * Fastn keeps the partner's own product (Formflow) out of the customer's connect step, so the
+ * partner creates that connection for each customer. We mint a dedicated Formflow API key for the
+ * workspace and store it as the workspace's Formflow connection, which lets Formflow-triggered
+ * integrations subscribe to this workspace's own webhooks.
+ */
+export async function ensureProductConnection(workspace: Workspace, user: User) {
+  const connectorId = process.env.FASTN_PRODUCT_CONNECTOR_ID;
+  const authMethodId = process.env.FASTN_PRODUCT_AUTH_METHOD_ID;
+  if (!connectorId || !authMethodId) return;
+  const [fresh] = await db.select({ at: workspaces.fastnConnectionAt }).from(workspaces).where(eq(workspaces.id, workspace.id)).limit(1);
+  if (fresh?.at) return;
+
+  const { key } = await createApiKey(workspace.id, "Fastn integrations");
+  const res = await fetch(`${API_URL}/api/v1/connections`, {
+    method: "POST",
+    headers: headers("", user.id),
+    body: JSON.stringify({ connectorId, authMethodId, orgId: workspace.id, name: "Formflow", credentials: { token: key } }),
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await res.text();
+  const alreadyThere = res.status === 409 || /already exists/i.test(body);
+  if (!res.ok && !alreadyThere) throw new FastnError(`Creating the Formflow connection in Fastn failed (HTTP ${res.status})`, res.status, body);
+  await db.update(workspaces).set({ fastnConnectionAt: new Date() }).where(eq(workspaces.id, workspace.id));
 }
 
 /** A short-lived embed token for this workspace and user. Fetch a new one on every page load. */

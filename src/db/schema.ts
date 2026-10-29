@@ -7,6 +7,7 @@ export const workspaces = pgTable("workspaces", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   fastnRegisteredAt: timestamp("fastn_registered_at", { withTimezone: true }),
+  fastnConnectionAt: timestamp("fastn_connection_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 
