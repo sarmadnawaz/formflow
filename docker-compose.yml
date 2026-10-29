@@ -1,0 +1,26 @@
+# One command to run Formflow with its own Postgres: docker compose up
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: formflow
+      POSTGRES_PASSWORD: formflow
+      POSTGRES_DB: formflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U formflow"]
+      interval: 2s
+      retries: 20
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://formflow:formflow@db:5432/formflow
+      APP_URL: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  pgdata:

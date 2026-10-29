@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
+  // Every page reads the session or the database, so pages render per request.
+  output: "standalone",
   turbopack: {
     rules: {
       "*.css": {
