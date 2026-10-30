@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { apiError, notFound, readJson, withApiKey } from "@/lib/api";
 import { getForm, listResponses, submitResponse } from "@/lib/forms";
-import { serializeResponse } from "@/lib/serialize";
+import { resolveAnswerKeys, serializeResponse } from "@/lib/serialize";
 
 type Ctx = RouteContext<"/api/v1/forms/[id]/responses">;
 
@@ -23,7 +23,8 @@ const createSchema = z.object({ answers: z.record(z.string(), z.unknown()) });
 
 /**
  * POST /api/v1/forms/:id/responses — submit a response on someone's behalf.
- * Answers can be keyed by field id or by field label (case-insensitive).
+ * Answers can be keyed by field id, by field label (case-insensitive) or by a standard
+ * contact key (email, firstname, lastname, name, phone, company).
  */
 export const POST = withApiKey<Ctx>(async (req, ctx, workspace) => {
   const form = await getForm(workspace.id, (await ctx.params).id);
@@ -31,14 +32,7 @@ export const POST = withApiKey<Ctx>(async (req, ctx, workspace) => {
   const body = await readJson(req, createSchema);
   if (body.error) return body.error;
 
-  const byLabel = new Map(form.fields.map((f) => [f.label.trim().toLowerCase(), f.id]));
-  const input: Record<string, unknown> = {};
-  const unknownKeys: string[] = [];
-  for (const [key, value] of Object.entries(body.data.answers)) {
-    const id = form.fields.some((f) => f.id === key) ? key : byLabel.get(key.trim().toLowerCase());
-    if (id) input[id] = value;
-    else unknownKeys.push(key);
-  }
+  const { answers: input, unknown: unknownKeys } = resolveAnswerKeys(form, body.data.answers);
   if (unknownKeys.length) return apiError(422, "unknown_fields", `No field matches: ${unknownKeys.join(", ")}`);
 
   const result = await submitResponse(form, input, "api");

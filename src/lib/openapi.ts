@@ -93,7 +93,7 @@ export function openApiSpec(serverUrl: string) {
                     prefill: {
                       type: "object",
                       additionalProperties: { type: ["string", "number", "boolean"] },
-                      description: "Answers keyed by field id or field label",
+                      description: "Answers keyed by field id, field label or a standard contact key (email, firstname, lastname, name, phone, company)",
                       example: { Email: "jane@acme.com" },
                     },
                   },
@@ -134,7 +134,7 @@ export function openApiSpec(serverUrl: string) {
           tags: ["Responses"],
           operationId: "submitResponse",
           summary: "Submit a response",
-          description: "Answers are validated like the hosted form. Keys can be field ids or field labels (case-insensitive).",
+          description: "Answers are validated like the hosted form. Keys can be field ids, field labels (case-insensitive) or standard contact keys (email, firstname, lastname, name, phone, company).",
           requestBody: {
             required: true,
             content: {

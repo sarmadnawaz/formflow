@@ -3,12 +3,13 @@ import { z } from "zod";
 import { apiError, notFound, readJson, withApiKey } from "@/lib/api";
 import { getForm } from "@/lib/forms";
 import { appUrl } from "@/lib/ids";
+import { resolveAnswerKeys } from "@/lib/serialize";
 
 const schema = z.object({ prefill: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional() });
 
 /**
  * POST /api/v1/forms/:id/share-link — a link to send to someone, optionally with
- * answers prefilled (keyed by field id or label).
+ * answers prefilled (keyed by field id, label or a standard contact key such as email).
  */
 export const POST = withApiKey<RouteContext<"/api/v1/forms/[id]/share-link">>(async (req, ctx, workspace) => {
   const form = await getForm(workspace.id, (await ctx.params).id);
@@ -23,10 +24,8 @@ export const POST = withApiKey<RouteContext<"/api/v1/forms/[id]/share-link">>(as
   }
 
   const url = new URL(`${appUrl()}/f/${form.slug}`);
-  for (const [key, value] of Object.entries(prefill)) {
-    const field = form.fields.find((f) => f.id === key || f.label.trim().toLowerCase() === key.trim().toLowerCase());
-    if (!field) return apiError(422, "unknown_fields", `No field matches: ${key}`);
-    url.searchParams.set(field.id, String(value));
-  }
+  const { answers, unknown } = resolveAnswerKeys(form, prefill);
+  if (unknown.length) return apiError(422, "unknown_fields", `No field matches: ${unknown.join(", ")}`);
+  for (const [id, value] of Object.entries(answers)) url.searchParams.set(id, String(value));
   return NextResponse.json({ form_id: form.id, url: url.toString() });
 });
