@@ -63,6 +63,20 @@ function standardFields(form: Form): Partial<Record<StandardKey, string>> {
 }
 
 /**
+ * Each field's answer key by label: the label as written, with " (2)", " (3)" and so on
+ * added to later fields that repeat an earlier label.
+ */
+export function labelKeys(form: Form): { id: string; key: string }[] {
+  const used = new Set<string>();
+  return form.fields.map((f) => {
+    let key = f.label;
+    for (let n = 2; used.has(key); n++) key = `${f.label} (${n})`;
+    used.add(key);
+    return { id: f.id, key };
+  });
+}
+
+/**
  * Turns answers keyed by field id, field label (case-insensitive) or a standard contact key
  * (email, firstname, lastname, name, phone, company) into answers keyed by field id.
  * firstname + lastname fill a single full-name field, and name is split across first/last
@@ -70,7 +84,9 @@ function standardFields(form: Form): Partial<Record<StandardKey, string>> {
  * so one integration can send the same keys to every form.
  */
 export function resolveAnswerKeys(form: Form, input: Record<string, unknown>) {
-  const byLabel = new Map(form.fields.map((f) => [f.label.trim().toLowerCase(), f.id]));
+  // Label keys as in response payloads, so a repeated label maps to its first field and "Label (2)" to the next.
+  const byLabel = new Map<string, string>();
+  for (const { id, key } of labelKeys(form)) if (!byLabel.has(key.trim().toLowerCase())) byLabel.set(key.trim().toLowerCase(), id);
   const std = standardFields(form);
   const answers: Record<string, unknown> = {};
   const standard: Partial<Record<StandardKey, unknown>> = {};
@@ -121,6 +137,17 @@ export function serializeFieldList(form: Form) {
   ];
 }
 
+function answersByLabel(form: Form, answers: Record<string, unknown>) {
+  const out: Record<string, unknown> = {};
+  for (const { id, key } of labelKeys(form)) if (answers[id] != null) out[key] = answers[id];
+  return out;
+}
+
+/** One empty record with every question's label key, for mapping screens that read a sample record. */
+export function fieldSample(form: Form) {
+  return { answers: Object.fromEntries(labelKeys(form).map(({ key }) => [key, ""])) };
+}
+
 /**
  * A response with answers keyed by field id, plus a flat, labelled list so that
  * consumers can map answers without looking up the form first.
@@ -131,8 +158,8 @@ export function serializeResponse(response: FormResponse, form: Form) {
     form_id: response.formId,
     source: response.source,
     created_at: response.createdAt.toISOString(),
-    // Field-id keys plus standard contact keys (email, firstname, lastname, name, phone, company).
-    answers: { ...contactFrom(form, response.answers), ...response.answers },
+    // Field-id keys, label keys (see labelKeys) and standard contact keys (email, firstname, lastname, name, phone, company).
+    answers: { ...contactFrom(form, response.answers), ...answersByLabel(form, response.answers), ...response.answers },
     contact: contactFrom(form, response.answers),
     fields: form.fields.map((f) => ({ id: f.id, label: f.label, type: f.type, value: response.answers[f.id] ?? null })),
   };

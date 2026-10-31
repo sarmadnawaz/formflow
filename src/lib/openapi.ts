@@ -110,6 +110,34 @@ export function openApiSpec(serverUrl: string) {
           },
         },
       },
+      "/forms/{form_id}/field-sample": {
+        parameters: [idParam("form_id", "Form ID")],
+        get: {
+          tags: ["Forms"],
+          operationId: "getFormFieldSample",
+          summary: "Get one empty response record keyed by question label",
+          description:
+            "For mapping screens that read the shape of a sample record. answers has one key per question in form order, named as in response payloads: the label, with \" (2)\", \" (3)\" added to repeated labels. Every value is an empty string.",
+          responses: {
+            "200": json({
+              type: "object",
+              properties: {
+                data: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 1,
+                  items: {
+                    type: "object",
+                    properties: { answers: { type: "object", additionalProperties: { type: "string" }, example: { "Full name": "", Email: "" } } },
+                  },
+                },
+              },
+            }),
+            "401": errors["401"],
+            "404": errors["404"],
+          },
+        },
+      },
       "/forms/{form_id}/share-link": {
         parameters: [idParam("form_id", "Form ID")],
         post: {
@@ -316,7 +344,7 @@ export function openApiSpec(serverUrl: string) {
             form_id: { type: "string" },
             source: { type: "string", enum: ["web", "api"] },
             created_at: { type: "string", format: "date-time" },
-            answers: { type: "object", additionalProperties: true, description: "Answers keyed by field id" },
+            answers: { type: "object", additionalProperties: true, description: "Answers keyed by field id, by question label (repeated labels get \" (2)\", \" (3)\") and by standard contact key (email, firstname, lastname, name, phone, company)" },
             fields: {
               type: "array",
               description: "Every field with its label and answer, in form order",
