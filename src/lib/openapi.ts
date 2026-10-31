@@ -77,6 +77,39 @@ export function openApiSpec(serverUrl: string) {
           responses: { "204": { description: "Deleted" }, "401": errors["401"], "404": errors["404"] },
         },
       },
+      "/forms/{form_id}/fields": {
+        parameters: [idParam("form_id", "Form ID")],
+        get: {
+          tags: ["Forms"],
+          operationId: "listFormFields",
+          summary: "List the fields a form's responses can be mapped from",
+          description:
+            "Standard contact keys (email, firstname, lastname, name, phone, company) first, then one entry per question in form order. Each name is the path of the value in a response, for example answers.fld_4ljrk4n8.",
+          responses: {
+            "200": json({
+              type: "object",
+              properties: {
+                data: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      name: { type: "string", example: "answers.email" },
+                      label: { type: "string", example: "Email" },
+                      type: { type: "string", example: "email" },
+                      standard: { type: "boolean", description: "A standard contact key, present on every form" },
+                      required: { type: "boolean", description: "Whether the question must be answered" },
+                    },
+                    required: ["name", "label", "type"],
+                  },
+                },
+              },
+            }),
+            "401": errors["401"],
+            "404": errors["404"],
+          },
+        },
+      },
       "/forms/{form_id}/share-link": {
         parameters: [idParam("form_id", "Form ID")],
         post: {

@@ -100,6 +100,27 @@ export function resolveAnswerKeys(form: Form, input: Record<string, unknown>) {
   return { answers, unknown };
 }
 
+const STANDARD_FIELD_LIST = [
+  { key: "email", label: "Email", type: "email" },
+  { key: "firstname", label: "First name", type: "short_text" },
+  { key: "lastname", label: "Last name", type: "short_text" },
+  { key: "name", label: "Full name", type: "short_text" },
+  { key: "phone", label: "Phone", type: "phone" },
+  { key: "company", label: "Company", type: "short_text" },
+] as const;
+
+/**
+ * The keys a mapping screen can offer for a form's responses: the standard contact keys
+ * first, then one entry per question in form order. Each name is the path the value has
+ * in a serialized response (answers.<key>).
+ */
+export function serializeFieldList(form: Form) {
+  return [
+    ...STANDARD_FIELD_LIST.map((f) => ({ name: `answers.${f.key}`, label: f.label, type: f.type, standard: true })),
+    ...form.fields.map((f) => ({ name: `answers.${f.id}`, label: f.label, type: f.type, required: f.required })),
+  ];
+}
+
 /**
  * A response with answers keyed by field id, plus a flat, labelled list so that
  * consumers can map answers without looking up the form first.
